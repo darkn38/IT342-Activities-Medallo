@@ -6,6 +6,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 @Configuration
 @EnableWebSecurity
@@ -19,11 +20,17 @@ public class SecurityConfig {
                         .anyRequest().permitAll()
                 )
                 .oauth2Login(oauth -> oauth
-                        .defaultSuccessUrl("/user-info", true)
+                        .defaultSuccessUrl("/api/user-info", true)  // Redirect to /api/user-info after login
                         .userInfoEndpoint(userInfo -> userInfo.oidcUserService(new OidcUserService())) // Handle OAuth2 user info
                 )
-                .logout(logout -> logout.logoutSuccessUrl("/"))
-                .formLogin(formLogin -> formLogin.defaultSuccessUrl("/user-info", true))
+                .logout(logout -> logout
+                        .logoutRequestMatcher(new AntPathRequestMatcher("/logout"))
+                        .logoutSuccessUrl("/login")  // Redirect to login page after logout
+                        .invalidateHttpSession(true)
+                        .clearAuthentication(true)
+                        .deleteCookies("JSESSIONID") // Optional: Remove session cookie
+                )
+                .formLogin(formLogin -> formLogin.defaultSuccessUrl("/api/user-info", true)) // Ensure form login also redirects correctly
                 .build();
     }
 }
