@@ -93,37 +93,46 @@ public class GoogleContactService {
     /**
      * Creates a new contact in Google Contacts.
      */
-    public void createContact(String name, String email, String phoneNumber, OAuth2AuthenticationToken authentication) {
+    public void addContact(String name, String email, String phoneNumber, OAuth2AuthenticationToken authentication) {
         try {
             String accessToken = getAccessToken(authentication);
             if (accessToken == null) {
                 throw new RuntimeException("No valid access token found.");
             }
 
-            // Construct the new contact
+            // Construct the new contact payload
             Person newContact = new Person();
             newContact.setNames(Collections.singletonList(new Name().setGivenName(name)));
             newContact.setEmailAddresses(Collections.singletonList(new EmailAddress().setValue(email)));
             newContact.setPhoneNumbers(Collections.singletonList(new PhoneNumber().setValue(phoneNumber)));
 
-            // Send request
+            // Set headers
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(accessToken);
             headers.setContentType(MediaType.APPLICATION_JSON);
 
+            // Prepare request entity
             HttpEntity<Person> request = new HttpEntity<>(newContact, headers);
             RestTemplate restTemplate = new RestTemplate();
 
-            restTemplate.postForObject(GOOGLE_CREATE_CONTACT_URL, request, Person.class);
+            // Send POST request to Google API
+            ResponseEntity<String> response = restTemplate.postForEntity(GOOGLE_CREATE_CONTACT_URL + "?access_token=" + accessToken, request, String.class);
+
+            if (response.getStatusCode().is2xxSuccessful()) {
+                System.out.println("✅ Contact successfully added: " + name);
+            } else {
+                System.err.println("❌ Failed to add contact: " + response.getBody());
+            }
+
         } catch (Exception e) {
-            throw new RuntimeException("❌ Error creating contact: " + e.getMessage());
+            throw new RuntimeException("❌ Error adding contact: " + e.getMessage());
         }
     }
 
     /**
      * Updates an existing contact in Google Contacts.
      */
-    public void updateContact(String resourceName, String name, String email, String phoneNumber, OAuth2AuthenticationToken authentication) {
+    public void editContact(String resourceName, String name, String email, String phoneNumber, OAuth2AuthenticationToken authentication) {
         try {
             String accessToken = getAccessToken(authentication);
             if (accessToken == null) {
@@ -177,6 +186,7 @@ public class GoogleContactService {
             throw new RuntimeException("❌ Error deleting contact: " + e.getMessage());
         }
     }
+
 
     private String getAccessToken(OAuth2AuthenticationToken authentication) {
         OAuth2AuthorizedClient client = authorizedClientService.loadAuthorizedClient(

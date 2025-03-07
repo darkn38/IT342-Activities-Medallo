@@ -16,9 +16,11 @@ public class SecurityConfig {
     public SecurityFilterChain defaultSecurityChain(HttpSecurity http) throws Exception {
         return http
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/api/contacts").authenticated()  // Protect Google Contacts API
+                        .requestMatchers("/api/contacts").authenticated()  // Protects fetching contacts
+                        .requestMatchers("/api/contacts/edit/**").authenticated() // Protects editing contacts
                         .anyRequest().permitAll()
                 )
+                .csrf(csrf -> csrf.disable()) // Disable CSRF if using REST API calls from frontend
                 .oauth2Login(oauth -> oauth
                         .defaultSuccessUrl("/api/user-info", true)  // Redirect to /api/user-info after login
                         .userInfoEndpoint(userInfo -> userInfo.oidcUserService(new OidcUserService())) // Handle OAuth2 user info

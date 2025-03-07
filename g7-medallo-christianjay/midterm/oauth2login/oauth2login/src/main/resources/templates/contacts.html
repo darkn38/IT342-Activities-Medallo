@@ -4,59 +4,166 @@
     <meta charset="UTF-8">
     <title>Google Contacts</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
     <script>
-        function showContactForm() {
-            document.getElementById("addContactForm").style.display = "block";
+        function showContactForm(isEdit = false, button = null) {
+            let modalTitle = document.getElementById("modalTitle");
+            let contactForm = document.getElementById("contactForm");
+
+            document.getElementById("contactId").value = "";
+            document.getElementById("name").value = "";
+            document.getElementById("email").value = "";
+            document.getElementById("phone").value = "";
+
+            if (isEdit && button) {
+                let row = button.closest("tr");
+                let contactId = row.getAttribute("data-id");
+                let name = row.cells[0].innerText;
+                let email = row.cells[1].innerText;
+                let phone = row.cells[2].innerText;
+
+                document.getElementById("contactId").value = contactId;
+                document.getElementById("name").value = name;
+                document.getElementById("email").value = email;
+                document.getElementById("phone").value = phone;
+
+                modalTitle.innerText = "Edit Contact";
+                contactForm.setAttribute("onsubmit", `updateContact(event, '${contactId}')`);
+            } else {
+                modalTitle.innerText = "Add New Contact";
+                contactForm.setAttribute("onsubmit", "saveContact(event)");
+            }
+            new bootstrap.Modal(document.getElementById("contactModal")).show();
+        }
+
+        function saveContact(event) {
+            event.preventDefault();
+            let formData = {
+                name: document.getElementById("name").value,
+                email: document.getElementById("email").value,
+                phone: document.getElementById("phone").value
+            };
+
+            fetch("/api/contacts/add", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => { alert(data.message); location.reload(); })
+            .catch(error => console.error("Error:", error));
+        }
+
+        function updateContact(event, contactId) {
+            event.preventDefault();
+            let formData = {
+                name: document.getElementById("name").value,
+                email: document.getElementById("email").value,
+                phone: document.getElementById("phone").value
+            };
+
+            fetch(`/api/contacts/edit/${contactId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => { alert(data.message); location.reload(); })
+            .catch(error => console.error("Error:", error));
+        }
+
+        function deleteContact(button) {
+            let row = button.closest("tr");
+            let contactId = row.getAttribute("data-id");
+
+            if (confirm("Are you sure you want to delete this contact?")) {
+                fetch(`/api/contacts/delete/${contactId}`, { method: "DELETE" })
+                .then(response => response.json())
+                .then(data => { alert(data.message); location.reload(); })
+                .catch(error => console.error("Error:", error));
+            }
         }
     </script>
 </head>
 <body class="container mt-4">
 
-<h2>📇 Google Contacts</h2>
-
-<!-- Add Contact Button -->
-<button class="btn btn-primary mb-3" onclick="showContactForm()">➕ Add Contact</button>
-
-<!-- Hidden Form for Adding Contact -->
-<div id="addContactForm" style="display: none;">
-    <form method="post" action="/api/contacts/add">
-        <div class="mb-2">
-            <label>Name:</label>
-            <input type="text" name="name" class="form-control" required>
-        </div>
-        <div class="mb-2">
-            <label>Email:</label>
-            <input type="email" name="email" class="form-control">
-        </div>
-        <div class="mb-2">
-            <label>Phone Number:</label>
-            <input type="text" name="phone" class="form-control">
-        </div>
-        <button type="submit" class="btn btn-success">Save Contact</button>
-    </form>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="text-primary">📇 Google Contacts</h2>
+    <button class="btn btn-success" onclick="showContactForm()">➕ Add Contact</button>
 </div>
 
-<table class="table table-bordered">
-    <thead>
-    <tr>
-        <th>Name</th>
-        <th>Email</th>
-        <th>Phone Number</th>
-        <th>Actions</th>
-    </tr>
-    </thead>
-    <tbody>
-    <tr th:each="contact : ${contacts}">
-        <td th:text="${contact.names != null and contact.names.size() > 0 ? contact.names[0].displayName : 'N/A'}"></td>
-        <td th:text="${contact.emailAddresses != null and contact.emailAddresses.size() > 0 ? contact.emailAddresses[0].value : 'N/A'}"></td>
-        <td th:text="${contact.phoneNumbers != null and contact.phoneNumbers.size() > 0 ? contact.phoneNumbers[0].value : 'N/A'}"></td>
-        <td>
-            <a href="#" class="btn btn-warning btn-sm">Edit</a>
-            <a href="#" class="btn btn-danger btn-sm">Delete</a>
-        </td>
-    </tr>
-    </tbody>
-</table>
+<div class="modal fade" id="contactModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 id="modalTitle" class="modal-title">Add New Contact</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="contactForm">
+                    <input type="hidden" id="contactId">
+                    <div class="mb-3">
+                        <label class="form-label">Name:</label>
+                        <input type="text" id="name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email:</label>
+                        <input type="email" id="email" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Phone Number:</label>
+                        <input type="text" id="phone" class="form-control" required>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Save Contact</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-hover table-bordered shadow-sm">
+        <thead class="table-dark">
+        <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Phone Number</th>
+            <th class="text-center">Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="contact : ${contacts}" th:attr="data-id=${contact.resourceName}">
+            <td th:text="${contact.names != null and contact.names.size() > 0 ? contact.names[0].displayName : 'N/A'}"></td>
+
+            <td>
+                <ul th:if="${contact.emailAddresses != null}">
+                    <li th:each="email : ${contact.emailAddresses}" th:text="${email.value}"></li>
+                </ul>
+            </td>
+
+            <td>
+                <ul th:if="${contact.phoneNumbers != null}">
+                    <li th:each="phone : ${contact.phoneNumbers}" th:text="${phone.value}"></li>
+                </ul>
+            </td>
+
+            <td class="text-center">
+                <button class="btn btn-warning btn-sm" onclick="showContactForm(true, this)">
+                    <i class="bi bi-pencil-square"></i> Edit
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="deleteContact(this)">
+                    <i class="bi bi-trash"></i> Delete
+                </button>
+            </td>
+        </tr>
+
+        </tbody>
+    </table>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 </body>
 </html>
